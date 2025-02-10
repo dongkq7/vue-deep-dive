@@ -23,3 +23,6 @@ export const TriggerOpTypes = {
   ADD: 'add',
   DELETE: 'delete'
 }
+
+// 特殊标识
+export const RAW = Symbol('raw')
