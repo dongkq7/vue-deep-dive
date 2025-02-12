@@ -1,4 +1,5 @@
 let activeEffect = null
+// 这里没有使用WeakMap是因为WeakMap无法遍历且WeakMap的key只能是对象
 const depsMap = new Map()
 const effectStack = []; // 保存函数栈
 // 依赖收集
@@ -20,7 +21,11 @@ function trigger(target, key) {
   const deps = depsMap.get(key)
   if (deps) {
     const effectsToRun = new Set(deps)
-    effectsToRun.forEach(effect => effect())
+    effectsToRun.forEach(effect => {
+      if (effect !== activeEffect) {
+        effect()
+      }
+    })
   }
 }
 
@@ -112,6 +117,13 @@ function cleanup(environment) {
 //   console.log(state.c)
 //   console.log("执行了函数2")
 // });
+// state.a = 2
+
+// effect(() => {
+//   console.log('fn1')
+//   state.a = state.a + 2
+// })
+
 // state.a = 2
 
 effect(() => {

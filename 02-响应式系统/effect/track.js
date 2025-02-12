@@ -1,4 +1,5 @@
-import { TrackOpTypes } from "../utils.js"
+import { targetMap, activeEffect } from './effect.js'
+import { TrackOpTypes, ITERATE_KEY } from "../utils.js"
 
 let shouldTrack = true
 // 暂停收集依赖
@@ -11,11 +12,33 @@ export function resumeTracking() {
 }
 
 export default function(target, type, key) {
-  if (!shouldTrack) return
+  if (!shouldTrack || !activeEffect) return
 
+  // key归一化
   if (type === TrackOpTypes.ITERATE) {
-    console.log(`收集器：代理对象的${type}操作被拦截`)
-    return
+    key = ITERATE_KEY
   }
-  console.log(`收集器：代理对象${key}属性的${type}操作被拦截`)
+  // 拿到propMap
+  let propMap = targetMap.get(target);
+  if (!propMap) {
+    propMap = new Map();
+    targetMap.set(target, propMap);
+  }
+
+  // 拿到typeMap
+  let typeMap = propMap.get(key);
+  if (!typeMap) {
+    typeMap = new Map();
+    propMap.set(key, typeMap);
+  }
+
+  // 最后一步，根据 type 值去找对应的 Set
+  let depSet = typeMap.get(type);
+  if (!depSet) {
+    depSet = new Set();
+    typeMap.set(type, depSet);
+  }
+
+  depSet.add(activeEffect)
+  activeEffect.deps.push(depSet)
 }
