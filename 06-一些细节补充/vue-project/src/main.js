@@ -1,6 +1,7 @@
 import { createApp, reactive } from 'vue'
 import App from './App.vue'
 import { time } from './utils'
+import ErrorLogger from './plugins/ErrorLogger/ErrorLogger'
 
 // 创建全局配置对象
 const globalConfig = reactive({
@@ -31,6 +32,7 @@ app.directive('focus', {
 // 加入这是用户的权限信息
 const userPermission = ['delete', 'admin']
 
+//自定义指令
 app.directive('permission', {
   mounted(el, binding) {
     const permissions = binding.value
@@ -59,4 +61,12 @@ app.directive('time', {
     delete el.timeout
   }
 })
+
+// 使用自定义插件
+app.use(ErrorLogger, {
+  logToConsole: true,
+  remoteToLogging: true,
+  remoteUrl: 'http://localhost:3000/log'
+})
+
 app.mount('#app')

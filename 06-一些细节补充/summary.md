@@ -865,3 +865,311 @@ export default {
 
 1. 只能被同步调用：组合式函数需要同步调用，以确保在组件实例的初始化过程中，所有相关的状态和副作用都能被正确地设置和处理。如果组合式函数被异步调用，可能会导致在组件实例还未完全初始化时，尝试访问未定义的实例数据，从而引发错误。
 2. 可以在像 onMounted 生命周期钩子中调用：在某些情况下，可以在如 onMounted 生命周期钩子中调用组合式函数。这些生命周期钩子也是**同步执行**的，并且在组件实例已经被初始化后调用，因此可以安全地使用组合式函数。
+
+
+
+# 四、自定义指令
+
+Vue内置指令：
+
+- v-if
+- v-for
+- v-show
+- v-html
+- v-model
+- v-on
+- v-bind
+- ....
+
+自定义指令的本质也是一种复用。
+
+目前为止复用的方式有：
+
+- 组件: 对结构、样式、逻辑的一种复用
+- 组合式函数：侧重于对**有状态的逻辑**进行复用
+- 自定义指令：重用涉及普通元素的底层 DOM 访问的逻辑
+
+## 快速上手
+
+App.vue
+
+```vue
+<template>
+  <input type="text" v-focus />
+</template>
+<script setup>
+// 这里是局部注册自定义指令，只在 App.vue里面生效
+const vFocus = {
+  // 键值对
+  // 键：生命周期钩子 值：函数
+  mounted: (el) => {
+    // 这个是 DOM 原生方法，用来让元素获取焦点
+    el.focus()
+  }
+}
+</script>
+<style scoped></style>
+```
+
+指令名称要以`v`开头
+
+## 相关细节
+
+### 1. 不同组件写法下的自定义指令
+
+1. Vue3 setup 语法setup 写法中**任何以 v 开头的驼峰式命名的变量**都可以被用作一个自定义指令。
+2. 非 setup 语法：**需要在 directives 中进行注册**，例如：App.vue
+
+```vue
+<script>
+export default {
+  // 有一个directives的配置选项
+  directives: {
+    focus: {
+      mounted: (el) => el.focus()
+    }
+  }
+}
+</script>
+
+<template>
+  <input v-focus />
+</template>
+```
+
+### 2. 全局注册
+
+在 app 应用实例上面通过 directive 来进行注册。
+
+main.js
+
+```javascript
+import { createApp } from 'vue';
+import App from './App.vue';
+
+const app = createApp(App);
+
+// 创建一个全局的自定义指令 v-focus
+// 全局注册的自定义指令可以在所有组件里面使用
+app.directive('focus', {
+  mounted(el) {
+    el.focus();
+  }
+});
+
+app.mount('#app');
+```
+
+简化写法：
+
+```javascript
+// 注意第二个参数，不再是对象而是函数
+app.directive('color', (el, binding) => {
+  // 这会在 `mounted` 和 `updated` 时都调用
+  el.style.color = binding.value
+})
+```
+
+第二个参数是一个函数而非对象，之前对象可以指定具体哪个生命周期，而**函数对应的就固定是 mounted 和 updated 生命周期**。
+
+### 3. 指令钩子
+
+对象内是和生命周期钩子相关的键值对，可以选择其他生命周期钩子函数：
+
+```javascript
+const myDirective = {
+  // 在绑定元素的 attribute 前
+  // 或事件监听器应用前调用
+  created(el, binding, vnode) {
+    // 下面会介绍各个参数的细节
+  },
+  // 在元素被插入到 DOM 前调用
+  beforeMount(el, binding, vnode) {},
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都挂载完成后调用
+  mounted(el, binding, vnode) {},
+  // 绑定元素的父组件更新前调用
+  beforeUpdate(el, binding, vnode, prevVnode) {},
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都更新后调用
+  updated(el, binding, vnode, prevVnode) {},
+  // 绑定元素的父组件卸载前调用
+  beforeUnmount(el, binding, vnode) {},
+  // 绑定元素的父组件卸载后调用
+  unmounted(el, binding, vnode) {}
+}
+```
+
+指令的钩子函数，会有这么一些参数：
+
+1. el：**指令绑定到的元素**。这可以用于直接操作 DOM。
+2. binding：这是一个**对象**
+
+例如：
+
+```vue
+<div v-example:foo.bar="baz">
+```
+
+binding 参数如下：
+
+```javascript
+{
+  arg: 'foo',
+  modifiers: { bar: true },
+  value: /* baz 的值 */,
+  oldValue: /* 上一次更新时 baz 的值 */
+}
+```
+
+换句话说，通过 binding 对象，可以获取到用户在使用指令时的一些 **详细** 信息，回头需要根据这些详细信息做不同处理。
+
+再来看一个前面学过的内置指令：
+
+```vue
+<div v-bind:id="id">
+```
+
+binding 参数如下：
+
+```javascript
+{
+  arg: 'id',
+  value: /* id 的值 */,
+  oldValue: /* 上一次更新时 id 的值 */
+}
+```
+
+- **value**：传递给指令的值。例如在 v-my-directive="1 + 1" 中，值是 2。 
+- **oldValue**：之前的值，仅在 beforeUpdate 和 updated 中可用。无论值是否更改，它都可用。 
+- **arg**：传递给指令的**参数** (如果有的话)。例如在 v-my-directive:foo 中，参数是 "foo"。 
+- **modifiers**：一个包含**修饰符的对象**。例如在 v-my-directive.foo.bar 中，修饰符对象是 { foo: true, bar: true }。 
+- **instance**：使用该指令的**组件实例**。 
+- **dir**：指令的定义对象。
+
+1. **vnode**：代表绑定元素的底层 VNode。
+2. **preVnode**：代表之前的渲染中指令所绑定元素的 VNode。仅在 beforeUpdate 和 updated 钩子中可用。
+
+### 4. 传递多个值
+
+正常情况下，会给指令传递一个值，例如：
+
+```vue
+<div v-bind:id="id">
+```
+
+这里给指令传递的值就是 id.
+
+但是有些时候的需求是传递多个值，这个时候可以使用**对象字面量**，例如：
+
+```vue
+<div v-demo="{ color: 'white', text: 'hello!' }"></div>
+```
+
+这里就通过对象的方式传递了多个值：
+
+```javascript
+app.directive('demo', (el, binding) => {
+  // binding.value 
+  console.log(binding.value.color) // => "white"
+  console.log(binding.value.text) // => "hello!"
+})
+```
+
+## 案例
+
+1. 创建一个自定义指令 v-permission，用于控制 DOM 元素根据用户权限列表来显示
+
+2. 创建一个自定义指令 v-time，用于显示相对时间，例如 XX秒前、XX分前、XX小时前、20XX-XX-XX
+
+   
+
+# 五、自定义插件
+
+插件（plugin）是一种可选的独立模块，它可以添加特定功能或特性，而无需修改主程序的代码。
+
+每个需求功能都不一样，框架是无法预知的。
+
+所以干脆提供一种机制，自己去写某些逻辑，然后加入到框架中即可。
+
+这种机制就是插件。
+
+## 插件的使用与制作
+
+Vue中使用插件：
+
+```javascript
+const app = createApp();
+// 通过use方法来使用插件
+app.use(router).use(pinia).use(ElementPlus).mount('#app')
+```
+
+Vue中制作插件：
+
+1. 一个插件可以是一个**拥有 install 方法的对象**：
+
+```javascript
+const myPlugin = {
+  install(app, options) {
+    // 配置此应用
+  }
+}
+```
+
+1. 也可以直接是**一个安装函数本身**：
+
+```javascript
+const install = function(app, options){}
+```
+
+安装方法接收两个参数：
+
+1. app：应用实例
+2. options：额外选项，**这是在使用插件时传入的额外信息**
+
+```javascript
+app.use(myPlugin, {
+  /* 可选的选项，会传递给 options */
+})
+```
+
+Vue中插件带来的增强包括：
+
+1. 通过 `app.component` 和 `app.directive` 注册一到多个全局组件或自定义指令
+2. 通过 `app.provide` 使一个资源注入进整个应用
+3. 向 a`pp.config.globalProperties `中添加一些全局实例属性或方法
+4. 一个可能上述三种都包含了的功能库 (例如 vue-router)
+
+例如：自定义组件库时，install 方法所做的事情就是往当前应用注册所有的组件：
+
+```javascript
+import Button from './Button.vue';
+import Card from './Card.vue';
+import Alert from './Alert.vue';
+
+const components = [Button, Card, Alert];
+
+const myPlugin = {
+  install(app, options){
+    // 这里要做的事情，其实就是引入所有的自定义组件
+    // 然后将其注册到当前的应用里面
+    components.forEach(com=>{
+      app.component(com.name, com);
+    })
+  }
+}
+
+export default myPlugin;
+```
+
+
+
+## 案例
+
+在企业级应用开发中，经常需要一个 **全局错误处理和日志记录插件**，它能够帮助捕获和记录全局的错误信息，并提供一个集中化的日志记录机制。
+
+我们的插件目标如下：
+
+1. **捕获全局的 Vue 错误**和**未处理的 Promise 错误**。
+2. 将错误信息**记录到控制台**或**发送到远程日志服务器**。
+3. 提供一个 Vue 组件用于显示最近的错误日志。
