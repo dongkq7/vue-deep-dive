@@ -1924,3 +1924,611 @@ function addNewItem() {
 ```
 
 【注意】如果涉及到其他元素移动，那么会挂上xx-move这个类
+
+# 八、Teleport
+
+这是 Vue 里面的一个内置组件。作用：将一个组件内部的一部分模板“传送”到该组件的 DOM 结构外层的位置去。
+
+## 快速上手
+
+模态框：理想情况下，模态框的按钮和模态框本身是在同一个组件中，因为它们都与组件的开关状态有关。但这意味着该模态框将与按钮一起渲染在应用 DOM 结构里很深的地方。
+
+例如：
+
+```vue
+<script setup>
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+<template>
+  <button @click="open = true">打开模态框</button>
+  <div v-if="open" class="modal">
+    <p>模态框内容</p>
+    <button @click="open = false">关闭</button>
+  </div>
+</template>
+<style scoped>
+.modal {
+  position: fixed;
+  z-index: 999;
+  top: 20%;
+  left: 50%;
+  width: 300px;
+  margin-left: -150px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+.modal p {
+  padding: 10px;
+  margin: 0;
+  background-color: #f4f4f4;
+  text-align: center;
+}
+</style>
+```
+
+打开该模态框，观察渲染结构：
+
+```html
+<div id="app" data-v-app="">
+  <div class="outer">
+    <h1>Teleport示例</h1>
+    <div>
+      <button data-v-381af681="">打开模态框</button>
+      <div data-v-381af681="" class="modal">
+        <p data-v-381af681="">模态框内容</p>
+        <button data-v-381af681="">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+这里的渲染结构其实是不太合适的。
+
+1. position: fixed 能够相对于浏览器窗口放置有一个条件，那就是不能有任何祖先元素设置了 transform、perspective 或者 filter 样式属性。也就是说如果我们想要用 CSS transform 为祖先节点 <div class="outer"> 设置动画，就会不小心破坏模态框的布局！
+2. 这个模态框的 z-index 受限于它的容器元素。如果有其他元素与 <div class="outer"> 重叠并有更高的 z-index，则它会覆盖住我们的模态框。
+
+总结起来，就是**模态框的样式会受到所在位置的祖级元素的影响**。
+
+
+
+以前书写原生 HTML 的时候，模特框一般都是在最外层：
+
+```html
+<body>
+  <div class="container">
+      <!-- 其他代码 -->
+  </div>
+  <div class="modal"></div>
+</body>
+```
+
+这种场景就可以使用 Teleport
+
+```vue
+<Teleport to="body">
+  <div v-if="open" class="modal">
+    <p>模态框内容</p>
+    <button @click="open = false">关闭</button>
+  </div>
+</Teleport>
+```
+
+使用 to 属性来指定要渲染的位置。
+
+
+
+## 实战案例
+
+用户管理模块中，有一个全局的“用户详情”对话框，该对话框可以在页面的任何地方被触发显示。为了使该对话框在 DOM 结构上位于应用的根元素下，并且避免它受到父组件的 CSS 样式影响，可以使用 Teleport 组件将该对话框传送到指定的 DOM 节点。
+
+/components/03(Teleport)
+
+App(Teleport).vue
+
+
+
+#  九、异步组件与Suspense
+
+# 一、异步组件
+
+异步组件：指的是**在需要时才加载**的组件。
+
+适用于大型应用，在大型应用中不可能一次性加载所有组件，这样会导致初始加载时长非常长。这样就可以使用异步组件，将不在首屏展示的组件延迟加载，从而减少初始的加载时间。
+
+- 比如模态框、对话框；这种是触发事件后才展示的组件
+
+## 基本用法
+
+在 Vue 中，可以通过 `defineAsyncComponent` 来定义一个异步组件
+
+```javascript
+import { defineAsyncComponent } from 'vue'
+
+// 之后就可以像使用普通组件一样，使用 AsyncCom 这个异步组件
+const AsyncCom = defineAsyncComponent(()=>{
+  // 这是一个工厂函数，该工厂函数一般返回一个 Promise
+  return new Promise((resolve, reject)=>{
+    resolve(/* 获取到的组件 */)
+  })
+})
+```
+
+ES模块的动态导入返回的也是一个 Promise，所以多数情况下可以和 defineAsyncComponent 配合着一起使用：
+
+```javascript
+import { defineAsyncComponent } from 'vue'
+
+// 之后就可以像使用普通组件一样，使用 AsyncCom 这个异步组件
+const AsyncCom = defineAsyncComponent(()=>{
+     import('.../MyCom.vue')
+})
+```
+
+## 快速上手
+
+```plain
+src/
+├── components/
+│   ├── Home.vue
+│   └── About.vue
+├── App.vue
+└── main.js
+```
+
+App.vue
+
+```vue
+<template>
+  <div id="app">
+    <button @click="currentComponent = Home">访问主页</button>
+    <button @click="currentComponent = About">访问关于</button>
+    <component :is="currentComponent" v-if="currentComponent"></component>
+  </div>
+</template>
+<script setup>
+import { shallowRef } from 'vue'
+import Home from './components/Home.vue'
+import About from './components/About.vue'
+const currentComponent = shallowRef(null)
+</script>
+```
+
+在 App.vue 中，通过 import 导入了 Home 和 About，这相当于在应用启动时立即加载所有被导入的组件，这会导致初始加载时间较长，特别是在组件数量较多的时候。
+
+重构 App.vue，使用异步组件来进行优化：
+
+```vue
+<template>
+  <div id="app">
+    <button @click="loadComponent('Home')">访问主页</button>
+    <button @click="loadComponent('About')">访问关于</button>
+    <component :is="currentComponent" v-if="currentComponent"></component>
+  </div>
+</template>
+<script setup>
+import { shallowRef, defineAsyncComponent } from 'vue'
+
+const currentComponent = shallowRef(null)
+/**
+ *
+ * @param name 组件名
+ */
+const loadComponent = (name) => {
+  currentComponent.value = defineAsyncComponent(() => import(`./components/${name}.vue`))
+}
+</script>
+```
+
+相比之前一开始就通过 import 导入 Home 和 About 组件，现在改为了点击按钮后才会 import，从而实现了懒加载的特性。
+
+
+
+## 其他细节
+
+### 1. 全局注册
+
+与普通组件一样，异步组件可以使用 app.component( ) 全局注册：
+
+```javascript
+app.component('MyComponent', defineAsyncComponent(() =>
+  import('./components/MyComponent.vue')
+))
+```
+
+### 2. 可以在父组件中定义
+
+```vue
+<script setup>
+import { defineAsyncComponent } from 'vue'
+
+// 在父组件里面定义了一个异步组件
+const AdminPage = defineAsyncComponent(() =>
+  import('./components/AdminPageComponent.vue')
+)
+</script>
+<template>
+    <!-- 使用异步组件就像使用普通组件一样 -->
+  <AdminPage />
+</template>
+```
+
+### 3. 支持的配置项
+
+defineAsyncComponent 方法支持传入一些配置项，此时不再是传递工厂函数，而是传入一个**配置对象**
+
+```javascript
+const AsyncComp = defineAsyncComponent({
+  // 加载函数
+  loader: () => import('./Foo.vue'),
+
+  // 加载异步组件时使用的组件
+  // 如果提供了一个加载组件，它将在内部组件加载时先行显示。
+  // 比如加载组件过程中展示一个loading效果
+  loadingComponent: LoadingComponent,
+  
+  // 展示加载组件前的延迟时间，默认为200ms
+  // 在网络状况较好时，加载完成得很快，加载组件和最终组件之间的替换太快可能产生闪烁，反而影响用户感受。
+  // 通过延迟来解决闪烁问题
+  delay: 200,
+
+  // 加载失败后展示的组件
+  // 如果提供了一个报错组件，则它会在加载器函数返回的 Promise 抛错时被渲染。
+  errorComponent: ErrorComponent,
+  
+  // 你还可以指定一个超时时间，在请求耗时超过指定时间时也会渲染报错组件。
+  // 默认值是：Infinity
+  timeout: 3000
+})
+```
+
+异步组件经常和内置组件 Suspense 搭配使用，给用户提供更好的用户体验。
+
+# 二、Suspense
+
+Suspense，本意是“悬而未决”的意思，这是 Vue3 新增的一个内置组件，主要用来在组件树中协调对异步依赖的处理。
+
+假设有如下目录结构：
+
+```plain
+<Suspense>
+└─ <Dashboard>
+   ├─ <Profile>（内容一）
+   │  └─ <FriendStatus>（好友状态组件：有异步的setup方法）
+   └─ <Content>（内容二）
+      ├─ <ActivityFeed> （活动提要：异步组件）
+      └─ <Stats>（统计组件：异步组件）
+```
+
+在这个组件树中有多个嵌套组件，要渲染出它们，首先得解析一些异步资源。
+
+每个异步组件需要处理自己的加载、报错和完成状态。在最坏的情况下，可能会在页面上看到三个旋转的加载状态，然后在不同的时间显示出内容。
+
+有了 <Suspense> 组件后，我们就可以在等待整个多层级组件树中的各个异步依赖获取结果时，**在顶层统一处理加载状态**。
+
+<Suspense> 可以等待的异步依赖有两种：
+
+1. 带有**异步 setup( ) 钩子的组件**。这也包含了使用 <script setup> 时有**顶层 await 表达式的组件**
+
+```javascript
+export default {
+  async setup() {
+    const res = await fetch(...)
+    const posts = await res.json()
+    return {
+      posts
+    }
+  }
+}
+<script setup>
+const res = await fetch(...)
+const posts = await res.json()
+</script>
+
+<template>
+  {{ posts }}
+</template>
+```
+
+1. 异步组件
+
+
+
+在 <Suspense> 组件中有两个插槽，两个插槽都只允许**一个**直接子节点。
+
+1. `#default`：当所有的异步依赖都完成后，会进入**完成**状态，展示默认插槽内容。
+2. `#fallback`：如果有任何异步依赖未完成，则进入**挂起**状态，在挂起状态期间，**展示的是后备内容**。
+
+
+
+## 快速上手
+
+```plain
+App.vue
+└─ Dashboard.vue
+   ├─ Profile.vue
+   │  └─ FriendStatus.vue（组件有异步的 setup）
+   └─ Content.vue
+      ├─ AsyncActivityFeed（异步组件）
+      │  └─ ActivityFeed.vue
+      └─ AsyncStats（异步组件）
+         └─ Stats.vue
+```
+
+实现效果：使用 Suspense 统一显示状态
+
+```vue
+<!-- App.vue start -->
+<template>
+  <div id="app">
+    <Dashboard />
+  </div>
+</template>
+
+<script setup>
+import Dashboard from './components/Dashboard.vue'
+</script>
+
+<!-- App.vue end -->
+
+<!-- Dashboard start -->
+<template>
+  <div class="dashboard">
+    <h1>控制台</h1>
+    <Suspense>
+      <template #default>
+        <!-- 所有异步组件加载完成后显示的内容 -->
+        <div>
+          <!-- 内容一：下面是好友状态组件（2s）-->
+          <Profile />
+          <!-- 内容二：活动提要（8s）、统计组件（5s） -->
+          <Content />
+        </div>
+      </template>
+      <template #fallback>
+        <!-- 只要有任何一个异步状态没有完成，显示后备内容 -->
+        <LoadingComponent />
+      </template>
+    </Suspense>
+  </div>
+</template>
+
+<script setup>
+import Profile from './Profile.vue'
+import Content from './Content.vue'
+import LoadingComponent from './LoadingComponent.vue'
+</script>
+
+<style scoped>
+.dashboard {
+  padding: 20px;
+}
+</style>
+
+<!-- Dashboard end -->
+
+<!-- Profile start -->
+<template>
+  <div class="profile">
+    <h2>第一部分内容</h2>
+    <FriendStatus />
+  </div>
+</template>
+
+<script setup>
+import FriendStatus from './FriendStatus.vue'
+</script>
+
+<style scoped>
+.profile {
+  padding: 10px;
+}
+</style>
+
+<!-- Profile end -->
+
+<!-- FriendStatus start -->
+<template>
+  <div class="friend-status">{{ friendStatus }}</div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+// 该组件在使用 <script setup> 时有顶层 await 表达式
+const friendStatus = ref('好友状态：加载中...')
+
+await new Promise((resolve) => setTimeout(resolve, 2000))
+friendStatus.value = '好友状态：在线'
+console.log('好友状态组件加载完成')
+</script>
+
+<style scoped>
+.friend-status {
+  font-size: 16px;
+}
+</style>
+
+<!-- FriendStatus end -->
+
+<!-- Content start -->
+<template>
+  <div class="content">
+    <h2>第二部分内容</h2>
+    <AsyncActivityFeed />
+    <AsyncStats />
+  </div>
+</template>
+
+<script setup>
+import { defineAsyncComponent } from 'vue'
+import LoadingComponent from './LoadingComponent.vue'
+
+// 异步组件
+const AsyncActivityFeed = defineAsyncComponent(() => {
+  // 模拟从服务器加载组件
+  return new Promise((resolve) => {
+    // 8秒后加载活动提要组件
+    setTimeout(() => {
+      resolve(import('./ActivityFeed.vue'))
+    }, 8000)
+  })
+})
+const AsyncStats = defineAsyncComponent(() => {
+  return new Promise((resolve) => {
+    // 5秒后加载活动提要组件
+    setTimeout(() => {
+      resolve(import('./Stats.vue'))
+    }, 5000)
+  })
+})
+</script>
+
+<style scoped>
+.content {
+  padding: 10px;
+}
+</style>
+
+<!-- Content end -->
+```
+
+
+
+🤔 思考：假设想要让 Profile 组件内容先显示出来，不等待 Content 组件的异步完成状态，该怎么做？
+
+此时就需要在Content组件中再使用Suspense组件进行处理
+
+```vue
+<template>
+  <div class="content">
+    <h2>第二部分内容</h2>
+    <Suspense>
+      <template #default>
+        <div>
+          <AsyncActivityFeed />
+          <AsyncStats />
+        </div>
+      </template>
+      <template #fallback>
+        <LoadingComponent />
+      </template>
+    </Suspense>
+  </div>
+</template>
+
+<script setup>
+import { defineAsyncComponent } from 'vue'
+import LoadingComponent from './LoadingComponent.vue'
+
+// 异步组件
+const AsyncActivityFeed = defineAsyncComponent(() => {
+  // 模拟从服务器加载组件
+  return new Promise((resolve) => {
+    // 8秒后加载活动提要组件
+    setTimeout(() => {
+      resolve(import('./ActivityFeed.vue'))
+    }, 8000)
+  })
+})
+const AsyncStats = defineAsyncComponent(() => {
+  return new Promise((resolve) => {
+    // 5秒后加载活动提要组件
+    setTimeout(() => {
+      resolve(import('./Stats.vue'))
+    }, 5000)
+  })
+})
+</script>
+
+<style scoped>
+.content {
+  padding: 10px;
+}
+</style>
+```
+
+## 其他细节
+
+**1. 内置组件嵌套顺序**
+
+<Suspense> 经常会和 <Transition>、<KeepAlive> 搭配着一起使用，此时就涉及到一个**嵌套的顺序**问题，谁在外层，谁在内层。
+
+下面是一个模板：
+
+```vue
+<RouterView v-slot="{ Component }">
+  <template v-if="Component">
+    <Transition mode="out-in">
+      <KeepAlive>
+        <Suspense>
+          <!-- 主要内容 -->
+          <component :is="Component"></component>
+          <!-- 加载中状态 -->
+          <template #fallback>
+            正在加载...
+          </template>
+        </Suspense>
+      </KeepAlive>
+    </Transition>
+  </template>
+</RouterView>
+```
+
+你可以根据实际开发需求，删减你不需要的组件。
+
+**2. 事件**
+
+<Suspense> 组件会触发三个事件：
+
+- pending：在进入挂起状态时触发
+- resolve：在 default 插槽完成获取新内容时触发
+- fallback：显示后备内容的时候触发
+
+```vue
+<template>
+  <div class="dashboard">
+    <h1>控制台</h1>
+    <Suspense @pending="onPending" @resolve="onResolve" @fallback="onFallback">
+      <template #default>
+        <!-- 所有异步组件加载完成后显示的内容 -->
+        <div>
+          <!-- 内容一：下面是好友状态组件（2s）-->
+          <Profile />
+          <!-- 内容二：活动提要（8s）、统计组件（5s） -->
+          <Content />
+        </div>
+      </template>
+      <template #fallback>
+        <!-- 只要有任何一个异步状态没有完成，显示后备内容 -->
+        <LoadingComponent />
+      </template>
+    </Suspense>
+  </div>
+</template>
+
+<script setup>
+import Profile from './Profile.vue'
+import Content from './Content.vue'
+import LoadingComponent from './LoadingComponent.vue'
+
+const onPending = () => {
+  console.log('当前处于pending状态')
+}
+
+const onResolve = () => {
+  console.log('异步组件加载完毕')
+}
+
+const onFallback = () => {
+  console.log('当前处于fallback状态，显示后备内容')
+}
+</script>
+
+<style scoped>
+.dashboard {
+  padding: 20px;
+}
+</style>
+```
