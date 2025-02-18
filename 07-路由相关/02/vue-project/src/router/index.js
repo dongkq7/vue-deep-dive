@@ -1,23 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/03/Home.vue'
-
-import User from '../views/03/User.vue'
-import Admin from '../views/03/Admin.vue'
+import Home from '../views/04/Home.vue'
+import About from '../views/04/About.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
-  { path: '/user/:id', name: 'user', component: User, meta: { transition: 'silde-left' } },
-  {
-    path: '/admin',
-    name: 'Admin',
-    component: Admin,
-    meta: { transition: 'silde-right' }
-  }
+  { path: '/about', name: 'About', component: About },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // return { top: 0, behavior: 'smooth'}
+    // return new Promise((resolve, reject) => {
+    //   setTimeout(() => {
+    //     resolve({ left: 0, top: 0, behavior: 'smooth' })
+    //   }, 500)
+    // })
+
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }  else if (savedPosition) {
+      return { ...savedPosition, behavior: 'smooth' }
+    } else {
+      return { top: 0, behavior: 'smooth' }
+    }
+  }
 })
 
 export default router

@@ -1072,3 +1072,130 @@ Vue 可能会自动复用看起来相似的组件，从而忽略了任何过渡�
 </template>
 ```
 
+# 七、滚动行为
+
+在 Vue-router 可以自定义路由切换时页面如何滚动。
+
+注意：这个功能只在支持 history.pushState 的浏览器中可用。
+
+当创建一个 Router 实例，可以提供一个 scrollBehavior 方法：
+
+```javascript
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [...],
+  scrollBehavior (to, from, savedPosition) {
+    // return 期望滚动到哪个的位置
+        // 始终滚动到顶部
+    return { top: 0 }
+  }
+})
+```
+
+第三个参数 savedPosition，只有当这是一个 popstate 导航时才可用（**由浏览器的 后退/前进 按钮触发**）。
+
+
+
+## 快速入门
+
+核心代码如下：
+
+```javascript
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  // 设置滚动行为
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return { ...savedPosition, behavior: 'smooth' }
+    } else {
+      return { top: 0, behavior: 'smooth' }
+    }
+  }
+})
+```
+
+savedPosition 是一个类似于 `{ left: XXX, top: XXX }`  这样的对象，如果存在就滚动到对应位置，否则滚动到 top 为 0 的位置。
+
+
+
+## 相关细节
+
+### 滚动到指定元素
+
+以通过 el 传递一个 CSS 选择器或一个 DOM 元素。在这种情况下，top 和 left 将被视为该元素的相对偏移量。
+
+```javascript
+const router = createRouter({
+  scrollBehavior(to, from, savedPosition) {
+    // 始终在元素 #main 上方滚动 10px
+    return {
+      // 也可以这么写
+      // el: document.getElementById('main'),
+      el: '#main',
+      // 在元素上 10 像素
+      top: 10,
+    }
+  },
+})
+```
+
+### 延迟滚动
+
+有时候，我们需要在页面中滚动之前稍作等待。例如，当处理过渡时，我们希望等待过渡结束后再滚动。要做到这一点，你可以返回一个 Promise，它可以返回所需的位置描述符。
+
+下面是一个例子，我们在滚动前等待 500ms：
+
+```javascript
+const router = createRouter({
+  scrollBehavior(to, from, savedPosition) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve({ left: 0, top: 0 })
+      }, 500)
+    })
+  },
+})
+```
+
+### 使用锚点链接进行滚动
+
+在使用锚点连接进行滚动的时候，需要在scrollBehavior中进行如下配置：
+
+```javascript
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }
+  }
+})
+```
+
+这样通过锚点连接进行跳转才会生效
+
+App.vue：
+
+```vue
+<template>
+  <div id="app">
+    <nav>
+      <router-link to="/">主页</router-link>
+      <router-link to="/about">关于</router-link>
+      <router-link to="/about#section1">About第一小节</router-link>
+      <router-link to="/about#section2">About第二小节</router-link>
+      <router-link to="/about#section3">About第三小节</router-link>
+    </nav>
+    <div class="content">
+      <router-view v-slot="{ Component, route }">
+        <component :is="Component" />
+      </router-view>
+    </div>
+  </div>
+</template>
+```
+
+# 八、动态路由
+
