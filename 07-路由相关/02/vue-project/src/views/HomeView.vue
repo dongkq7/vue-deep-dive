@@ -4,6 +4,10 @@
   </div>
 </template>
 <script setup>
+import { onBeforeRouteLeave } from 'vue-router'
+
+console.log('开始渲染Home组件')
+
 const props = defineProps({
   viewProp: {
     type: String
@@ -11,6 +15,11 @@ const props = defineProps({
 })
 
 console.log(props.viewProp) // value
+
+onBeforeRouteLeave((to, from, next) => {
+  console.log('离开Home组件')
+  next()
+})
 </script>
 <style>
 @media (min-width: 1024px) {
