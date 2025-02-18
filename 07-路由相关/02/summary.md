@@ -1199,3 +1199,324 @@ App.vue：
 
 # 八、动态路由
 
+## 基础知识
+
+这里的 router 就是通过 createRouter 方法创建的路由实例。
+
+### router.addRoute( )
+
+动态的添加路由，只注册一个新的路由，如果要跳转到新路由需要手动 push 或者 replace.
+
+### router.removeRoute(name)
+
+动态的移除路由，除了此方法移除路由，还有几种方式
+
+- 通过添加一个名称冲突的路由。如果添加与现有路由名称相同的路由，会先删除旧路由，再添加新路由：
+
+```javascript
+router.addRoute({ path: '/about', name: 'about', component: About })
+// 这将会删除之前已经添加的路由，因为他们具有相同的 name
+router.addRoute({ path: '/other', name: 'about', component: Other })
+```
+
+- 通过调用 router.addRoute( ) 返回的**回调函数**，调用该函数后可以删除添加的路由。当路由没有名称时，这很有用。
+
+```javascript
+const removeRoute = router.addRoute(routeRecord)
+removeRoute() // 删除路由如果存在的话
+```
+
+- 如果要添加嵌套的路由，可以将路由的 name 作为**第一个参数**传递给 router.addRoute( )
+
+```javascript
+router.addRoute({ name: 'admin', path: '/admin', component: Admin })
+router.addRoute('admin', { path: 'settings', component: AdminSettings })
+```
+
+这等价于：
+
+```javascript
+router.addRoute({
+  name: 'admin',
+  path: '/admin',
+  component: Admin,
+  children: [{ path: 'settings', component: AdminSettings }],
+})
+```
+
+另外还有两个常用 API：
+
+### router.hasRoute(name)
+
+检查路由是否存在。
+
+### router.getRoutes( )
+
+获取一个包含所有路由记录的数组。
+
+
+
+## 实战案例
+
+实现一个后台管理系统，该系统根据用户登录的不同角色，显示不同的导航栏。
+
+权限分为三种：
+
+- 管理员：能够访问所有模块（教学、教师、课程、学生）
+- 教师：能够访问教学、课程、学生模块
+- 学生：能够访问课程模块
+
+
+
+实现过程如下：
+
+1. 首先需要有一个角色和路由之间的映射表，这样才能知道某个角色可以访问哪些路由，如：
+
+```javascript
+// 角色和路由之间的关系映射表
+export const routesMap = {
+  teacher: [
+    {
+      path: '/student',
+      name: 'Student',
+      component: () => import('../views/Student.vue'),
+      meta: { title: '学生模块', icon: 'User' }
+    },
+    {
+      path: '/teaching',
+      name: 'Teaching',
+      component: () => import('../views/Teaching.vue'),
+      meta: { title: '教学模块', icon: 'DataBoard' }
+    },
+    {
+      path: '/course',
+      name: 'Course',
+      component: () => import('../views/Course.vue'),
+      meta: { title: '课程模块', icon: 'Collection' }
+    }
+  ],
+  student: [
+    {
+      path: '/course',
+      name: 'Course',
+      component: () => import('../views/Course.vue'),
+      meta: { title: '课程模块', icon: 'Collection' }
+    }
+  ]
+}
+```
+
+1. 抽出baseRoutes，提供一个根据角色动态添加路由的方法（这里为动态向Dashbord路由下添加子路由）
+
+```javascript
+// router/index.js
+import { createRouter, createWebHistory } from 'vue-router'
+import { routesMap } from './roles'
+
+const baseRoutes = [
+  { path: '/login', component: () => import('../views/Login.vue') },
+  {
+    path: '/',
+    name: 'Dashboard',
+    component: () => import('../views/Dashboard.vue'),
+    children: []
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: baseRoutes
+})
+
+// 获取 dashboard 路由
+const dashboardRoute = router.getRoutes().find((route) => route.path === '/')
+
+/**
+ * 根据角色动态的添加路由
+ * @param {*} role string （admin、teacher、student）
+ */
+export function setRoutesbyRole(role) {  clearRoutes()
+  // 1. 根据角色将对应的路由取出来
+  const roleRoutes = routesMap[role] || []
+  // 2. 动态的给 dashboard 添加子路由
+  roleRoutes.forEach((route) => {
+    router.addRoute(dashboardRoute.name, route)
+  })
+}
+export default router
+```
+
+1. 不同角色的登录处理
+
+- 将角色信息与登录信息存储在本地，方便后续获取
+- 调取动态添加路由方法来动态生成路由
+- 根据不同角色路由映射，跳转到第一个对应的路由
+
+```javascript
+// 登录对应的方法
+const handleLogin = () => {
+  // 这里本来应该是拿到用户名和密码，然后和服务器端进行交互
+  // 我们这里做一个简化
+  let userRole = '' // 存储用户的角色
+  if (loginForm.value.username === 'admin' && loginForm.value.password === 'admin') {
+    userRole = 'admin'
+  } else if (loginForm.value.username === 'teacher' && loginForm.value.password === 'teacher') {
+    userRole = 'teacher'
+  } else if (loginForm.value.username === 'student' && loginForm.value.password === 'student') {
+    userRole = 'student'
+  } else {
+    alert('用户名或密码错误')
+    return
+  }
+
+  // 存储用户角色信息
+  localStorage.setItem('userRole', userRole)
+  // 存储登录状态
+  localStorage.setItem('isLogin', true)
+
+  // 动态的添加路由
+  setRoutesbyRole(userRole)
+
+  // 获取该角色的第一个路由
+  const roleRoutes = routesMap[userRole] || []
+  const firstRoute = roleRoutes.length > 0 ? roleRoutes[0].path : '/'
+
+  // 设置actionIndex
+  localStorage.setItem('activeIndex', firstRoute)
+
+  // 跳转到首页
+  router.push(firstRoute)
+}
+```
+
+1. 根据动态生成的路由来展示导航
+
+```vue
+<template>
+  <el-container>
+   <!-- .... -->
+    <el-container>
+      <!-- 左侧导航栏 -->
+      <el-aside width="200px" class="el-aside">
+        <el-menu :default-active="activeIndex" @select="handleSelect">
+
+          <el-menu-item v-for="route in filteredRoutes" :key="route.path" :index="route.path">
+            <el-icon><component :is="route.meta.icon" /></el-icon>
+            <span>{{ route.meta.title }}</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+
+      <!-- 右侧内容区域 -->
+      <el-main>
+        <router-view></router-view>
+      </el-main>
+    </el-container>
+  </el-container>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+// 记录当前选中的菜单
+const activeIndex = ref(localStorage.getItem('activeIndex') || '/')
+
+const filteredRoutes = computed(() => {
+  // 先获取到当前注册的路由
+  const routes = router.getRoutes()
+  // 过滤出所有带有 meta.title 的路由
+  // 这里主要演示针对获取到的路由做一个二次处理
+  return routes.filter((route) => route.meta && route.meta.title)
+})
+
+const handleSelect = (key) => {
+  activeIndex.value = key
+  // 更新本地的 activeIndex 的值
+  localStorage.setItem('activeIndex', key)
+  router.push(`${key}`) // 路由跳转
+}
+
+// 退出登录
+const loginoutHandle = () => {
+  // 1. 清空本地存储
+  localStorage.clear()
+  // 2. 跳转到登录页面
+  router.replace('/login')
+}
+</script>
+```
+
+1. 细节处理
+
+- 解决刷新后路由映射不到的问题
+
+原因是刷新后，没有重新根据角色设置路由
+
+```javascript
+// 在main.js中添加如下逻辑
+// 从本地读取角色
+const userRole = localStorage.getItem('userRole')
+
+if (userRole) {
+  setRoutesbyRole(userRole)
+}
+```
+
+- 解决切换角色后路由映射不对问题
+
+原因是重新登录后，没有清空上一次动态添加的路由，需要在添加前清理一下
+
+```javascript
+/**
+ * 清空已有的路由
+ */
+function clearRoutes() {
+  const routes = router.getRoutes()
+  routes.forEach((route) => {
+    // 如果路由的 name 不为空，并且不是 dashboard 路由，则移除
+    if (route.name && route.name !== dashboardRoute.name) {
+      router.removeRoute(route.name)
+    }
+  })
+}
+
+/**
+ * 根据角色动态的添加路由
+ * @param {*} role string （admin、teacher、student）
+ */
+export function setRoutesbyRole(role) {
+  // 1. 先清空已有的路由
+  clearRoutes()
+  // 2. 根据角色将对应的路由取出来
+  const roleRoutes = routesMap[role] || []
+  // 3. 动态的给 dashboard 添加子路由
+  roleRoutes.forEach((route) => {
+    router.addRoute(dashboardRoute.name, route)
+  })
+}
+```
+
+- 如果用户已经登录，则不允许访问登录页面，只能退出登录。
+- 如果没有登录，访问其他页面则跳转到登录。
+
+那么需要添加全局导航守卫：
+
+```javascript
+router.beforeEach((to, from, next) => {
+  // 先获取用户的登录状态
+  const isLogin = localStorage.getItem('isLogin')
+  if (to.path === '/login' && isLogin) {
+    // 用户已经登陆了，但是他又想去登陆页，直接跳转到之前所在的页面
+    const activeIndexRoute = localStorage.getItem('activeIndex')
+    next(activeIndexRoute)
+  } else if (to.path !== '/login' && !isLogin) {
+    // 用户未登录，但是你又要去受保护的路由，跳转到登陆页
+    next('/login')
+  } else {
+    next()
+  }
+})
+```
