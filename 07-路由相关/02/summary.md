@@ -962,3 +962,113 @@ router.beforeEach(()=>{
 
 管理员身份登录：主页、用户页、管理员页、登录
 
+
+
+# 六、过渡特效
+
+## 快速上手
+
+为路由切换添加过渡效果，其实就是使用 Transition 内置组件，没有其他新知识。
+
+```vue
+<template>
+  <div id="app">
+    <nav>
+      <router-link to="/">主页</router-link>
+      <router-link to="/user">用户页</router-link>
+      <router-link to="/admin">管理员</router-link>
+      <router-link to="/login">登录</router-link>
+    </nav>
+    <router-view v-slot="{ Component }">
+      <Transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </router-view>
+  </div>
+</template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: 0.1s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
+```
+
+如果不添加mode，那么旧组件的消失和新组件的进入是同时进行过渡的，所以会出现闪烁问题。
+
+此时需要添加mode: 'out-in'，旧组件先消失，新组件再进入。
+
+## 相关细节
+
+### 单个路由的过渡
+
+如果对不同的路由的过渡有需求，那么可以通过以下的设置来做：
+
+1. meta：设置元数据，上面记录过渡的方式
+2. RouterView 插槽，通过插槽拿到 route，从而拿到元数据里面的过渡方式
+3. <Transition>组件设置不同的 name 值从而应用不同的过渡方式
+
+```vue
+<template>
+  <div id="app">
+    <nav>
+      <router-link to="/">主页</router-link>
+      <router-link to="/user">用户页</router-link>
+      <router-link to="/admin">管理员</router-link>
+    </nav>
+    <router-view v-slot="{ Component, route }">
+      <Transition :name="route.meta?.transition || 'fade'" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </router-view>
+  </div>
+</template>
+```
+
+### 基于路由动态过渡
+
+这里可以使用导航守卫（全局后置守卫）来添加过渡效果
+
+```javascript
+router.afterEach((to) => {
+  switch (to.path) {
+    case '/panel-left':
+      to.meta.transition = 'slide-left'
+      break
+    case '/panel-right':
+      to.meta.transition = 'slide-right'
+      break
+    default:
+      to.meta.transition = 'fade'
+  }
+})
+```
+
+### 使用Key
+
+Vue 可能会自动复用看起来相似的组件，从而忽略了任何过渡，可以添加一个 key 属性来强制过渡。
+
+```vue
+<template>
+  <div id="app">
+    <nav>
+      <router-link to="/">主页</router-link>
+      <router-link to="/user/1">用户页1</router-link>
+      <router-link to="/user/2">用户页2</router-link>
+      <router-link to="/admin">管理员</router-link>
+    </nav>
+    <router-view v-slot="{ Component, route }">
+      <Transition  name="slide-left" mode="out-in">
+        <component :is="Component" :key="route.path"/>
+      </Transition>
+    </router-view>
+  </div>
+</template>
+```
+
