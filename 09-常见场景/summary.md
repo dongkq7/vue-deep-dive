@@ -280,3 +280,176 @@ const updateChildCheck = (data) => {
 
 </style>
 ```
+
+# 二、使用customRef实现防抖
+
+## 实现防抖的基本方式
+
+首先是一个防抖最基本的实现：
+
+```vue
+<template>
+  <div class="container">
+    <input @input="debounceInputHandler" type="text" />
+    <p class="result">{{ text }}</p>
+  </div>
+</template>
+<script setup>
+import { ref } from 'vue'
+import { debounce } from 'lodash'
+const text = ref('')
+
+function inputHandler(e) {
+  text.value = e.target.value
+}
+
+const debounceInputHandler = debounce(inputHandler, 1000)
+</script>
+<style scoped>
+.container {
+  width: 80%;
+  margin: 1em auto;
+}
+.result {
+  color: #333;
+}
+.container input {
+  width: 100%;
+  height: 30px;
+}
+</style>
+```
+
+假设Vue给我们提供了一个防抖的ref：
+
+```vue
+<template>
+  <div class="container">
+    <input v-model="text" type="text" />
+    <p class="result">{{ text }}</p>
+  </div>
+</template>
+<script setup>
+import { debounceRef } from 'vue'
+const text = debounceRef('', 1000)
+</script>
+```
+
+上面的设想是美好的，代码能够简洁很多，但是 Vue 并没有给我们提供 debounceRef.
+
+怎么办呢？就需要我们自己去实现了。
+
+## CustomRef
+
+Vue为我们提供了一个CustomRef API：
+
+```javascript
+function customRef<T>(factory: CustomRefFactory<T>): Ref<T>
+
+type CustomRefFactory<T> = (
+  track: () => void,
+  trigger: () => void
+) => {
+  get: () => T
+  set: (value: T) => void
+}
+```
+
+### 基本使用方式
+
+下面是 customRef 的一个基本使用示例：
+
+```javascript
+import { customRef } from 'vue'
+let value = ''
+const text = customRef(() => {
+  return {
+    get() {
+      console.log('get')
+      return value
+    },
+    set(val) {
+      value = val
+      console.log('set')
+    }
+  }
+})
+console.log(text)
+console.log(text.value)
+text.value = 'test'
+```
+
+官方文档：https://vuejs.org/api/reactivity-advanced.html#customref
+
+### 通过CustomRef实现ref原有功能
+
+通过 customRef 实现 ref 原有的功能：
+
+```vue
+<template>
+  <div class="container">
+    <input v-model="text" type="text" />
+    <p class="result">{{ text }}</p>
+  </div>
+</template>
+<script setup>
+import { customRef } from 'vue'
+let value = '111'
+const text = customRef((track, trigger) => {
+  return {
+    get() {
+      track()
+      console.log('get方法被调用')
+      return value
+    },
+    set(val) {
+      trigger()
+      console.log('set方法被调用')
+      value = val
+    }
+  }
+})
+</script>
+<style scoped>
+.container {
+  width: 80%;
+  margin: 1em auto;
+}
+.result {
+  color: #333;
+}
+.container input {
+  width: 100%;
+  height: 30px;
+}
+</style>
+```
+
+### 实现防抖
+
+下面是通过自定义ref来实现防抖：
+
+```javascript
+import { customRef } from 'vue'
+import { debounce } from 'lodash'
+export function debounceRef(value, delay = 1000) {
+  return customRef((track, trigger) => {
+    let _value = value
+
+    const _debounce = debounce((val) => {
+      _value = val
+      trigger() // 派发更新
+    }, delay)
+
+    return {
+      get() {
+        track() // 收集依赖
+        return _value
+      },
+      set(val) {
+        _debounce(val)
+      }
+    }
+  })
+}
+```
