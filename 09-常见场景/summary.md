@@ -453,3 +453,231 @@ export function debounceRef(value, delay = 1000) {
   })
 }
 ```
+
+# 三、懒加载
+
+## 检查元素可见性
+
+IntersectionObserver 是一个**现代浏览器 API**，用于检测一个元素（或其子元素）相对于视口或某个祖先元素的可见性变化。
+
+### 基本用法
+
+```javascript
+const ob = new IntersectionObserver(callback, options);
+```
+
+1. **callback**: **当被观察元素的可见性变化时调用的回调函数**，callback **一开始会触发一次，确认当前的可视状**态（无论当前是可见还是不可见），之后在每次可视状态发生改变时会触发。回调函数里面有两个参数：
+
+- entries: 一个数组，包含所有被观察元素的 IntersectionObserverEntry 对象，每个对象包含以下属性：
+
+- boundingClientRect: 被观察元素的矩形区域信息。
+- intersectionRatio: 被观察元素的可见部分与整个元素的比例。
+- intersectionRect: 可见部分的矩形区域信息。
+- isIntersecting: 布尔值，表示元素是否与根元素相交。
+- rootBounds: 根元素的矩形区域信息。
+- target: 被观察的目标元素。
+- time: 触发回调的时间戳。
+
+- observer: IntersectionObserver 实例本身。
+
+1. **options**: 配置对象，用于**定制观察行为**
+
+- root：指定用作视口的元素。默认值为 null，表示使用浏览器视口作为根元素。
+- rootMargin: 类似于 CSS 的 margin 属性，**定义根元素的外边距**，用于扩展或缩小根元素的判定区域。可以用像素或百分比表示，例如 '10px' 或 '10%'或'-100px'等。
+- threshold: 是一个 0～1 之间的值，表示一个触发的阈值，如果是 0，只要目标元素一碰到 root 元素，就会触发，如果是1，表示目标元素完全进入 root 元素范围，才会触发。设置观察元素进入到根元素的百分比。
+
+有了 observer 实例对象后，要观察哪个元素，直接通过 observe 方法来进行观察即可，取消观察通过 unobserve 方法。
+
+```javascript
+// 开始观察
+ob.observe(elementA);
+ob.observe(elementB);
+
+// 停止观察
+ob.unobserve(element);
+```
+
+
+
+### 示例
+
+```javascript
+const target = document.querySelector('.target')
+
+
+const callback = (entries, observer) => {
+  entries.forEach(entry => {
+    console.log(entry)
+    if (entry.isIntersecting) {
+      console.log('目标元素进入视口')
+    } else {
+      console.log('目标元素离开')
+    }
+  })
+}
+
+const ob = new IntersectionObserver(callback, {
+  root: null,
+  rootMargin: '0px',
+  threshold: 0
+})
+
+ob.observe(target)
+const target = document.querySelector('.target')
+
+const callback = (entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      console.log('出现了')
+    } else {
+      console.log('离开了')
+    }
+  })
+}
+
+const ob = new IntersectionObserver(callback, {
+  root: document.querySelector('.container'),
+  rootMargin: '-50px', // target高度为100，此时出现一半时isIntersecting才为true
+  threshold: 0
+})
+
+ob.observe(target)
+```
+
+## 懒加载
+
+懒加载含义：当出现的时候再加载。
+
+懒加载核心原理：img 元素在 src 属性有值时，才会去请求对应的图片地址，那么我们可以先给图片一张默认的占位图：
+
+<img src="占位图.png">
+
+再设置一个自定义属性 data-src，对应的值为真实的图片地址：
+
+<img src="占位图.png" data-src="图片真实地址">
+
+之后**判断当然这个 img 元素有没有进入可视区域**，如果进入了，就把 data-src 的值赋给 src，让真实的图片显示出来。这就是图片懒加载的基本原理。
+
+不过这里对于判断 img 元素有没有进入可视区域，有着新旧两套方案。
+
+### 旧方案
+
+早期的方案是监听页面的滚动：
+
+window.addEventListener("scroll", ()=>{})
+
+当 img 标签的顶部到可视区域顶部的距离，小于可视区域高度的时候，我们就认为图片进入了可视区域，画张图表示：
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740924805769-48d03817-1a4f-4085-96fa-3cc7bcc8b998.png)
+
+示例代码：
+
+```javascript
+window.addEventListener("scroll", () => {
+  const img = document.querySelectorAll('img')
+  img.forEach(img => {
+    const rect = img.getBoundingClientRect();
+    console.log("rect", rect);
+    if (rect.top < document.body.clientHeight) {
+      // 当前这张图片进入到可视区域
+      // 做 src 的替换
+      img.src = img.dataset.src
+    }
+  })
+})
+```
+
+这种方案触发的非常频繁，非常耗费性能
+
+### 新方案
+
+使用 `**IntersectionObserver**` 来实现。
+
+```javascript
+let observer = new IntersectionObserver(
+  (entries, observer) => {
+    for(const entrie of entries){
+      if(entrie.isIntersection){
+        // 说明当前的图片和根元素产生了交叉
+        const img = entrie.target;
+        img.src = img.dataset.src;
+        observer.unobserve(img);
+      }
+    }
+  },
+  {
+    root: null,
+    rootMargin: "0px 0px 0px 0px",
+    threshold: 0.5
+  }
+);
+// 先拿到所有的图片元素
+const imgs = document.querySelectorAll("img");
+imgs.forEach((img) => {
+  //观察所有的图片元素
+  observer.observe(img);
+});
+```
+
+## Vue相关库
+
+### 安装
+
+npm install --save vue3-observe-visibility
+
+### 注册
+
+```vue
+import { createApp } from 'vue';
+  import App from './App.vue';
+  // 引入该第三方库
+  import { ObserveVisibility } from 'vue3-observe-visibility';
+
+  const app = createApp(App);
+
+  // 将其注册成为一个全局的指令
+  app.directive('observe-visibility', ObserveVisibility);
+
+  app.mount('#app');
+```
+
+### 使用
+
+```vue
+<template>
+  <div>
+    <h1>Vue Observe Visibility Example</h1>
+    <div
+      v-observe-visibility="{
+        callback: visibilityChanged,
+        intersection: {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.5
+      }
+      }"
+      class="observed-element"
+      >
+      观察这个元素的可见性
+    </div>
+  </div>
+</template>
+
+<script setup>
+  function visibilityChanged(isVisible) {
+    console.log('元素可见性变化:', isVisible)
+  }
+</script>
+
+<style scoped>
+  .observed-element {
+    height: 200px;
+    margin-top: 1000px;
+    background-color: lightcoral;
+  }
+</style>
+```
+
+### 案例-实现图片懒加载
+
+09-常见场景 -> vue-project -> views -> LazyLoad.vue

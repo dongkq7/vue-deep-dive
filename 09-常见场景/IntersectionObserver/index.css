@@ -1,0 +1,22 @@
+/* .target {
+  width: 100px;
+  height: 100px;
+  background-color: pink;
+  margin:0 auto;
+  margin-top: 1000px;
+} */
+
+
+.container {
+  width: 100%;
+  height: 500px;
+  border: 1px solid red;
+  overflow: scroll;
+}
+
+.target {
+  width: 100px;
+  height: 100px;
+  background-color: pink;
+  margin-top: 1000px;
+}
