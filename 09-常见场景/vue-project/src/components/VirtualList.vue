@@ -40,7 +40,7 @@ const startOffest = ref(0)
 const screenHeight = ref(0)
 
 // 截取要展示的数据
-const visibleData = computed(() => props.listData.slice(startIndex.value, endIndex.value))
+const visibleData = computed(() => props.listData.slice(startIndex.value, Math.min(endIndex.value, props.listData.length)))
 const totalHeight = computed(() => props.listData.length * props.itemSize)
 const visibleCount = computed(() => Math.ceil(screenHeight.value / props.itemSize))
 

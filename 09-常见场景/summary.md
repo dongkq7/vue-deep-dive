@@ -681,3 +681,515 @@ import { createApp } from 'vue';
 ### 案例-实现图片懒加载
 
 09-常见场景 -> vue-project -> views -> LazyLoad.vue
+
+
+
+# 四、虚拟列表
+
+长列表常见的 3 种处理方式：
+
+1. 懒加载
+2. 时间分片
+3. 虚拟列表
+
+## 懒加载
+
+懒加载的原理在于：只有视口内的内容会被加载，其他内容在用户滚动到视口时才会被加载。这可以显著减少初次加载的时间，提高页面响应速度。这样的好处在于：
+
+1. 节省带宽
+2. 提升用户体验
+
+懒加载的缺点：懒加载只能应对数据不是太多的情况。如果列表项有几万甚至几十万项，最终会有对应数量的 DOM 存在于页面上，严重降低页面性能。
+
+页面中的DOM元素越多，浏览器在重新绘制的时候压力越大
+
+## 时间分片
+
+时间分片的本质是通过 **requestAnimationFrame**，**由浏览器来决定回调函数的执行时机**。大量的数据会被分多次渲染，每次渲染对应一个片段。在每个片段中处理定量的数据后，会将主线程还给浏览器，从而实现快速呈现页面内容给用户。
+
+时间分片的缺点：
+
+1. 效率低
+2. 不直观（如果用户直接把滚动条拖动到最后，那么看到的效果就是数据是一片一片出来的）
+3. 性能差
+
+总结：无论是懒加载还是时间分片，最终都是将完整数量的列表项渲染出来，这在面对列表项非常非常多的时候，页面性能是比较低的。
+
+## 虚拟列表
+
+原理：设置一个可视区域，然后用户在滚动列表的时候，本质上是**动态修改可视区域里面的内容**。
+
+例如，一开始渲染前面 5 个项目
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740926264942-9225af94-afbd-481a-b303-dc4f1c5621d5.png)
+
+之后用户进行滚动，就会动态的修改可视区域里面的内容，如下图所示：
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740926264937-b5fae894-358b-4825-8078-8ae27abd6fa6.png)
+
+也就是说，始终渲染的只有可视区的那 5 个项目，这样能够极大的保障页面性能。
+
+### 实现定高的虚拟列表
+
+这里所指的定高是说列表项的每一项高度相同
+
+涉及到的信息：
+
+1. 可视区域起始数据索引(startIndex)
+2. 可视区域结束数据索引(endIndex)
+3. 可视区域的数据（通过startIndex与endIndex截取整个list来获取）
+4. 整个列表中的偏移位置 startOffset
+
+如下图所示：
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740926265054-2691d1c7-1204-4f0a-b355-218e76104ee0.png)
+
+接下来整个虚拟列表的设计如下：
+
+```html
+<div class="infinite-list-container">
+  <!-- 该元素高度为总列表的高度，目的是为了形成滚动 -->
+  <div class="infinite-list-phantom"></div>
+  <!-- 该元素为可视区域，里面就是一个一个列表项 -->
+  <div class="infinite-list">
+    <!-- item-1 -->
+    <!-- item-2 -->
+    <!-- ...... -->
+    <!-- item-n -->
+  </div>
+</div>
+```
+
+- infinite-list-container：可视区域的容器 
+- infinite-list-phantom：容器内的占位，高度为总列表高度，用于形成滚动条 
+- infinite-list：列表项的渲染区域
+
+如下图所示：
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740926264966-04e7bcad-2569-46a3-acc3-03a4c1367acf.png)
+
+接下来监听 infinite-list-container 的 scroll 事件，获取滚动位置的 scrollTop，因为回头需要设置 list 向下位移的距离
+
+- 假定可视区域高度固定，称之为 screenHeight
+- 假定列表每项高度固定，称之为 itemSize
+- 假定列表数据称之为 listData（就是很多的列表数据，几万项、几十万项列表数据）
+- 假定当前滚动位置称之为 scrollTop
+
+
+
+那么我们能够计算出这么一些信息：
+
+1. **列表总高度 ：listHeight = listData.length \* itemSize**
+2. **可显示的列表项数 : visibleCount = Math.ceil(screenHeight / itemSize)**
+3. **数据的起始索引: startIndex = Math.floor(scrollTop / itemSize)**
+4. **数据的结束索引: endIndex = startIndex + visibleCount**
+5. **列表显示数据为: visibleData = listData.slice(startIndex, endIndex)**
+
+
+
+当发生滚动后，由于渲染区域相对于可视区域发生了偏移，因此我们需要计算出这个偏移量，然后使用 transform 重新偏移回可视区域。
+
+偏移量的计算：startOffset = scrollTop - (scrollTop % itemSize)
+
+
+
+思考🤔：为什么要减去 scrollTop % itemSize ，为什么偏移量不能直接是scrollTop呢？
+
+答案：之所以要减去 scrollTop % itemSize，是为了将 scrollTop 调整到一个与 itemSize 对齐的位置，避免显示不完整的列表项
+
+
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740926264946-9e1c3505-f972-438f-9287-44a0241dcad5.png)
+
+实现定高的虚拟列表
+
+09-常见场景/vue-project/src/views/InfinityList.vue
+
+
+
+定高的虚拟列表存在一些问题，或者说可以优化的地方：
+
+1. 动态高度
+2. 白屏现象
+3. 滚动事件触发频率过高
+
+### 虚拟列表优化
+
+遗留问题：
+
+- 动态高度
+- 白屏问题
+- 滚动事件触发频率过高
+
+#### 1、动态高度方面的优化
+
+在实际应用中，列表项目里面可能包含一些可变内容，导致列表项高度并不相同。
+
+不固定的高度就会导致：
+
+- 列表总高度：listHeight = listData.length * itemSize 
+- 偏移量的计算：startOffset = scrollTop - (scrollTop % itemSize)
+- 数据的起始索引 startIndex = Math.floor(scrollTop / itemSize) 
+
+这些属性的计算**不能**再通过上面的方式来计算。因此我们会遇到这样的一些问题：
+
+1. 如何获取真实高度？
+2. 相关属性该如何计算？
+3. 列表渲染的项目有何改变？
+
+解决思路：
+
+##### 1-1、如何获取真实高度？
+
+- 如果能获得列表项高度数组，真实高度问题就很好解决。但在实际渲染之前是**很难拿到每一项的真实高度**的，所以我们采用**预估一个高度**渲染出真实 DOM，再根据 DOM 的实际情况去更新真实高度。
+- 创建一个**缓存列表**，其中列表项字段为 索引、高度与定位，并**预估列表项高度**用于**初始化缓存列表**。在渲染后根据 DOM 实际情况**更新缓存列表**。
+
+```vue
+<template>
+  <!-- 外层容器 -->
+  <div ref="listRef" class="infinite-list-container" @scroll="handleScroll">
+    <div class="infinite-list-phantom"></div>
+    <div class="infinite-list">
+      <div
+        ref="itemsRef"
+        class="infinite-list-item"
+        v-for="item in visibleData"
+        :key="item.id"
+      >
+        {{ item.value }}
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUpdated, nextTick, watch } from 'vue'
+const props = defineProps({
+  listData: {
+    type: Array,
+    default: () => []
+  },
+  // 每项的预估高度
+  estimatedItemSize: {
+    type: Number,
+    required: true
+  }
+})
+
+// 缓存列表：存储每一项的位置信息
+let positions = []
+const initPostions = () => {
+  positions = props.listData.map((_, index) => ({
+    index, // 列表项的下标
+    height: props.estimatedItemSize, // 列表项的高度，这里采用预估的高度
+    top: index * props.estimatedItemSize, // 列表项的顶部位置，根据下标和预估高度计算
+    bottom: (index + 1) * props.estimatedItemSize // 列表项的底部位置，也是根据下标和预估高度计算
+  }))
+}
+
+const itemsRef = ref([])
+const updateItemsSize = () => {
+  itemsRef.value.forEach((node, index) => {
+    // 获取列表项实际的高度
+    let height = node.getBoundingClientRect().height
+    // 计算预估高度和真实高度的差值
+    let oldHeight = positions[index].height // 拿到该项的预估高度
+    let dValue = oldHeight - height
+    if (dValue) {
+      // 如果存在差值，那么就需要更新位置信息
+      positions[index].bottom -= dValue
+      positions[index].height = height
+      // 接下来需要更新后续所有列表项的位置
+      for (let i = index + 1; i < positions.length; i++) {
+        positions[i].top = positions[i - 1].bottom
+        positions[i].bottom -= dValue
+      }
+    }
+  })
+}
+onMounted(() => {
+  // 初始化列表项位置信息
+  initPostions()
+})
+
+watch(() => props.listData, initPostions)
+
+onUpdated(async () => {
+  await nextTick() // 确保dom已经更新完成
+  if (!itemsRef.value || !itemsRef.value.length) return
+  此时去根据真实的DOM高度去更新缓存的位置信息
+  updateItemsSize()
+})
+</script>
+```
+
+##### 1-2、相关的属性该如何计算？
+
+- 显然以前的计算方式都无法使用了，因为那都是针对固定值设计的。
+- 于是我们需要 **根据缓存列表重写计算属性、滚动回调函数**，例如列表总高度的计算可以使用缓存列表最后一项的定位字段的值。
+
+```vue
+<template>
+  <!-- 外层容器 -->
+  <div ref="listRef" class="infinite-list-container" @scroll="handleScroll">
+    <!-- 该元素高度为总列表的高度，目的是为了形成滚动 -->
+    <div ref="virtualListRef" class="infinite-list-phantom"></div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const virtualListRef = ref(null)
+
+
+watch(() => props.listData, initPostions)
+
+onUpdated(async () => {
+  await nextTick() // 确保dom已经更新完成
+  //...
+  // 更新虚拟列表的高度
+  virtualListRef.value.style.height = positions[positions.length - 1].bottom + 'px'
+})
+</script>
+```
+
+- 对于偏移量可以通过缓存列表中的startIndex的前一个的bottom获取
+
+```vue
+<template>
+  <!-- 外层容器 -->
+  <div ref="listRef" class="infinite-list-container" @scroll="handleScroll">
+    <!-- 该元素高度为总列表的高度，目的是为了形成滚动 -->
+    <div ref="virtualListRef" class="infinite-list-phantom"></div>
+    <!-- 该元素为可视区域，里面就是一个一个列表项 -->
+    <div ref="contentRef" class="infinite-list">
+      <div
+        ref="itemsRef"
+        class="infinite-list-item"
+        v-for="item in visibleData"
+        :key="item.id"
+      >
+        {{ item.value }}
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+//...
+const contentRef = ref(null)
+const setStartOffset = () => {
+  const startOffset = startIndex.value >= 1 ? positions[startIndex.value - 1].bottom : 0
+  contentRef.value.style.transform = `translateY(${startOffset})px`
+}
+
+onUpdated(async () => {
+  await nextTick() // 确保dom已经更新完成
+  //...
+  setStartOffset()
+})
+</script>
+```
+
+##### 1-3、列表渲染的项目有何改变？
+
+- 因为用于渲染页面元素的数据是根据 **开始/结束索引** 在 **数据列表** 中筛选出来的，所以只要保证索引的正确计算，那么**渲染方式是无需变化**的。
+- 对于开始索引，我们将原先的计算公式改为：在 **缓存列表** 中搜索第一个底部定位大于 **列表垂直偏移量** 的项并返回它的索引
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740981728574-273db51d-5c86-4068-b6c2-371cdc3e2480.png)
+
+- 对于结束索引，它是根据开始索引生成的，无需修改。
+
+```javascript
+// 关于查找 startIndex 的方法，可以使用二分查找法来进行优化
+// 因为缓存列表中的位置信息是有序的
+const binarySearch = (list, value) => {
+  let start = 0
+  let end = list.length - 1
+  let tempIndex = null
+  while (start <= end) {
+    let midIndex = parseInt((start + end) / 2)
+    let midValue = list[midIndex].bottom
+    if (midValue === value) {
+      return midIndex + 1
+    } else if (midValue < value) {
+      start = midIndex + 1
+    } else if (midValue > value) {
+      // 此时就得减少end去一点点找了，直到tempIndex < midIndex 为止，就找到了第一个大于scrollTop的元素索引
+      if (tempIndex === null || tempIndex > midIndex) {
+        tempIndex = midIndex
+      }
+      end = end - 1
+    }
+  }
+  return tempIndex
+}
+const getStartIndex = (scrollTop) => {
+  return binarySearch(positions, scrollTop)
+}
+```
+
+#### 2、解决白屏问题
+
+由于仅渲染可视区域的元素。此时如果用户滚动过快，会出现白屏闪烁的现象。
+
+之所以会有这个现象，是因为先加载出来的是白屏（没有渲染内容），然后迅速会被替换为表格内容，从而出现闪烁的现象。
+
+并且这种现象在越低性能的浏览器上面表现得越明显。
+
+解决思路：
+
+为了让页面的滚动更加平滑，我们可以在原先列表结构的基础上加上**缓冲区**，也就是整个渲染区域由 **可视区 + 缓冲区** 共同组成，这样就给滚动回调和页面渲染留出了更多的时间。
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740997008867-48e51cc1-5ce6-4af8-99a4-bda46e8c5cb9.png)
+
+首先可以增加一个`bufferScale`属性，用来表示缓冲区的占可视区域的比例。
+
+这样设计后，缓冲区的数据会进入到可视区域，然后我们要做的就是更新缓冲区的数据。
+
+代码片段：
+
+```javascript
+// 上方缓冲区计算
+const aboveCount = computed(() => {
+  // 缓冲区列表项个数的计算，其实就是可视区显示个数 * 缓冲比例
+  // 但是考虑到可能存在当前虚拟列表处于最顶端，所以需要和 startIndex 做一个比较，取最小值
+  return Math.min(startIndex.value, props.bufferScale * visibleCount.value)
+})
+
+// 下方缓冲区计算
+const belowCount = computed(() => {
+  return Math.min(props.listData.length - endIndex.value, props.bufferScale * visibleCount.value)
+})
+```
+
+假设我们有如下场景：
+
+- 总共有 100 项数据（props.listData.length = 100）
+- 当前可视区域显示 10 项（visibleCount.value = 10）
+- bufferScale 设置为 1
+- 当前 startIndex.value = 20（表示当前可视区域从第21项开始显示）
+- 当前 endIndex.value = 29（表示当前可视区域显示到第30项）
+
+计算结果如下：
+
+```javascript
+// 计算结果为 Math.min(20, 10) = 10
+const aboveCount = Math.min(20, 1 * 10)
+
+// 计算结果为 Math.min(70, 10) = 10
+const belowCount = Math.min(100 - 30, 1 * 10)
+```
+
+因此最终上下的缓冲区的缓冲列表项目均为10.
+
+另外关于整个列表的渲染，之前是根据索引来计算的，现在就需要额外加入上下缓冲区大小重新计算，如下所示：
+
+```javascript
+const visibleData = computed(() => {
+  let startIdx = startIndex.value - aboveCount.value
+  let endIdx = endIndex.value + belowCount.value
+  return props.listData.slice(startIdx, endIdx)
+})
+```
+
+最后，因为多出了缓冲区域，所以偏移量也要根据缓冲区来重新进行计算。
+
+至于这个 startOffset 具体是怎么计算的，如下图所示：
+
+![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740997008877-a573c962-2419-43f4-822e-bedfbf16df14.png)![img](https://cdn.nlark.com/yuque/0/2025/png/22253064/1740998201421-bb1e3797-20aa-409d-b5e2-1ca828328316.png)
+
+```javascript
+const setStartOffset = () => {
+  let startOffset
+
+  // 检查当前可视区域的第一个可见项索引是否大于等于1（即当前显示的内容不在列表最开始的地方）
+  if (startIndex.value >= 1) {
+    // 计算当前可视区域第一项的顶部位置与考虑上方缓冲区后的有效偏移量
+    let size =
+      positions[startIndex.value].top -
+      (positions[startIndex.value - aboveCount.value]
+       ? positions[startIndex.value - aboveCount.value].top
+       : 0)
+
+    // 计算 startOffset：用当前可视区域第一个项的前一项的底部位置，减去上面计算出的 size，
+    // 这个 size 表示的是在考虑缓冲区后需要额外平移的偏移量
+    startOffset = positions[startIndex.value - 1].bottom - size
+  } else {
+    // 如果当前的 startIndex 为 0，表示列表显示从最开始的地方开始，没有偏移量
+    startOffset = 0
+  }
+
+  // 设置内容容器的 transform 属性，使整个内容平移 startOffset 像素，以确保正确的项对齐在视口中
+  content.value.style.transform = `translate3d(0,${startOffset}px,0)`
+}
+```
+
+
+
+setStartOffset 方法重写完毕后，整个白屏闪烁问题也就完美解决了。
+
+#### 3、解决滚动事件触发频率过高问题
+
+虽然效果实现了，但是 scroll 事件的触发频率非常高，每次用户一滚动就会触发，而每次触发都会执行 scroll 回调方法。
+
+解决思路：
+
+可以使用 `**IntersectionObserver**` 来替换监听 scroll 事件。
+
+相比 scroll，IntersectionObserver 可以设置多个阈值来检测元素进入视口的不同程度，只在必要时才进行计算，没有性能上的浪费。并且监听回调也是异步触发的。
+
+```javascript
+const observer = ref(null)
+const createObserver = () => {
+  observer.value = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        let scrollTop = listRef.value.scrollTop
+        startIndex.value = getStartIndex(scrollTop)
+        endIndex.value = startIndex.value + visibleCount.value
+        setStartOffset()
+      }
+    })
+  },
+  {
+    root: listRef.value,
+    rootMargin: '0px',
+    threshold: 0.1
+  }
+  )
+}
+const observeItems = () => {
+  itemsRef.value.forEach(item => {
+    observer.value.observe(item)
+  })
+}
+onMounted(() => {
+  // 获取可视区域高度
+  screenHeight.value = listRef.value.clientHeight
+  startIndex.value = 0
+  endIndex.value = startIndex.value + visibleCount.value
+  // 在组件挂载的时候，初始化列表项的位置信息
+  initPostions()
+  createObserver()
+})
+onUpdated(() => {
+  // 这里之所以使用 nextTick，是为了确保DOM更新完毕后再去获取列表项的位置信息
+  nextTick(() => {
+    if (!itemsRef.value || !itemsRef.value.length) return
+    // 1. 更新列表项的高度
+    updateItemsSize()
+    // 2. 更新虚拟列表的高度
+    virtualListRef.value.style.height = positions[positions.length - 1].bottom + 'px'
+    // 3. 更新列表的偏移量
+    setStartOffset()
+    // 观察列表项
+    observeItems()
+  })
+})
+```
+
+#### 4、完整代码
+
+09-常见场景/vue-project/src/views/InfinityList2.vue

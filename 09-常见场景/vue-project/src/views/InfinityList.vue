@@ -21,6 +21,6 @@ const listData = ref(list)
 
 <style scoped>
 .list {
-  height: 600px;
+  height: 100vh;
 }
 </style>
