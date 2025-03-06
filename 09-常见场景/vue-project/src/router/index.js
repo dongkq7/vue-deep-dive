@@ -89,6 +89,22 @@ const router = createRouter({
       meta: {
         page: 'VueChartjs使用示例'
       }
+    },
+    {
+      path: '/vuelidate',
+      name: 'vuelidate1',
+      component: () => import('@/views/Vuelidate1.vue'),
+      meta: {
+        page: 'Vuelidate使用示例1'
+      }
+    },
+    {
+      path: '/vuelidate2',
+      name: 'vuelidate2',
+      component: () => import('@/views/Vuelidate2.vue'),
+      meta: {
+        page: 'Vuelidate使用示例2'
+      }
     }
   ],
 })
