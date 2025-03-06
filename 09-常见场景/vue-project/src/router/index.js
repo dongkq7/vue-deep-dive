@@ -105,6 +105,14 @@ const router = createRouter({
       meta: {
         page: 'Vuelidate使用示例2'
       }
+    },
+    {
+      path: '/vuelazyload',
+      name: 'vuelazyload',
+      component: () => import('@/views/VueLazyload.vue'),
+      meta: {
+        page: 'VueLazyload使用示例'
+      }
     }
   ],
 })
