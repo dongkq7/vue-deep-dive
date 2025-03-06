@@ -1,14 +1,13 @@
 <template>
   <div class="nav">
     <RouterLink v-for="route in routes" :key="route.name" :to="route.path">
-      {{ route.name }}
+      {{ route.meta?.page }}
     </RouterLink>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 const routes = useRouter().getRoutes()
 
 </script>

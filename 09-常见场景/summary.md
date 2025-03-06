@@ -1193,3 +1193,565 @@ onUpdated(() => {
 #### 4、完整代码
 
 09-常见场景/vue-project/src/views/InfinityList2.vue
+
+# 五、Vueuse
+
+https://vueuse.org/
+
+## 介绍
+
+VueUse 是一个基于 Vue 组合式 API 的工具库，里面提供了一系列高效、易用的组合函数，用于简化 Vue 开发，节省开发时间。
+
+VueUse 主要特点：
+
+1. 丰富的组合函数
+2. TS支持
+3. 轻量级
+4. 良好的文档
+
+VueUse里面有很多的 [分类](https://vueuse.org/functions.html)，每个分类下面又有各种丰富的 API：
+
+1. 浏览器 API
+
+- useFetch：用于发起 HTTP 请求，类似于浏览器的 fetch API。
+- useClipboard：用于操作剪贴板，例如复制文本。
+- useLocalStorage：简化 localStorage 的使用。
+- ......
+
+1. 状态管理
+
+- useToggle：一个简单的开关状态管理工具。
+- useCounter：用于计数的状态管理工具。
+- .....
+
+1. 传感器
+
+- useMouse：追踪鼠标的位置和状态。
+- useGeolocation：获取地理位置信息。
+
+1. 用户界面
+
+- useFullscreen：控制元素的全屏状态。
+- useDark：检测和切换暗模式。
+
+1. 工具函数
+
+- useDebounce：提供防抖功能。
+- useThrottle：提供节流功能。
+
+## 基本使用
+
+安装：
+
+```bash
+npm install @vueuse/core
+```
+
+然后就可以在项目中引入并使用：
+
+```vue
+<template>
+  <div>{{ x }}</div>
+  <div>{{ y }}</div>
+</template>
+<script setup>
+import { useMouse } from '@vueuse/core'
+
+const { x, y } = useMouse()
+</script>
+<style scoped></style>
+```
+
+
+
+## 综合示例：待办事项
+
+09-常见场景/vue-project/src/views/Vueuse.vue
+
+# 六、Vuedraggable
+
+vuedraggable 是一个基于 Sortable.js 的 Vue 组件，用于实现拖拽和排序功能。它可以让你在 Vue 应用中轻松地实现拖拽排序，并提供了丰富的配置选项和事件来控制拖拽行为。
+
+Sortable.js 是一个轻量级的 JS 库，用于实现拖拽排序功能。它支持 HTML5 的拖拽 API，并提供了丰富的选项和事件，可以轻松地在网页中实现拖拽排序、拖拽交换等功能。Vue.Draggable 是基于 Sortable.js 构建的，用于在 Vue 应用中实现这些功能。
+
+Sortable.js 的特点：
+
+1. 轻量级：Sortable.js 非常轻量，核心库只有几千字节。
+2. 高性能：利用现代浏览器的 HTML5 拖拽 API，提供高性能的拖拽体验。
+3. 多样的选项：提供丰富的选项和回调函数，可以自定义拖拽行为。
+4. 多种场景：支持多种拖拽场景，包括列表排序、网格布局、分组拖拽等。
+5. 与框架集成：容易与主流前端框架集成，如 Vue、React、Angular 等。
+
+
+
+## 基本使用
+
+首先安装这个库：
+
+```bash
+npm install vuedraggable@4.0.0
+```
+
+注意在安装的时候，一定要指定安装的版本为 4.0.0，因为默认不会安装这个版本。
+
+安装后可以从这个库中导入一个**组件**：
+
+```vue
+<template>
+  <draggable 
+     v-model="myArray" 
+     group="people" 
+     @start="drag=true" 
+     @end="drag=false" 
+     itemKey="id"
+   >
+    <template #item="{ element }">
+      <div class="task">{{ element.name }}</div>
+    </template>
+  </draggable>
+</template>
+<script setup>
+import draggable from 'vuedraggable'
+</script>
+```
+
+这是 vuedraggable 的一个标准用法。
+
+1. v-model="myArray"：数组包含了需要拖拽排序的元素。
+2. group="people"：group 属性用于配置**分组**，相同 group 名称的 draggable 实例之间允许相互拖拽元素。
+3. @start="drag=true"：当拖拽操作开始时触发，这里将 drag 变量设置为 true，这可以用于在拖拽开始时触发一些行为，比如改变样式或显示一些提示。
+4. @end="drag=false"：当拖拽操作结束时触发，这里将 drag 变量设置为 false
+
+
+
+## 案例
+
+一个“未完成”列表和一个“已完成”列表，两个列表之间的项目可以自由拖动：
+
+# 七、vue-drag-resize
+
+vue-drag-resize：和拖拽相关的库
+
+- vuedraggable：主要用于列表项的拖拽排序。
+- vue-drag-resize：主要用于需要用户交互调整大小和位置的元素，如看板、图表、可视化编辑器等。
+
+## 基本使用
+
+安装这个库：
+
+```bash
+npm install vue-drag-resize
+```
+
+安装的版本信息："vue-drag-resize": "^1.5.4"
+
+接下来从 vue-drag-resize/src 中可以导入一个**组件 VueDragResize**，该组件提供一个插槽，可以存放要 resize 的模板内容。
+
+基本示例核心代码：
+
+```vue
+<template>
+  <div id="app">
+    <VueDragResize
+      :w="200"
+      :h="150"
+      :x="100"
+      :y="100"
+      :min-width="50"
+      :min-height="50"
+      @resizing="resizeHandle"
+      @dragging="() => console.log('拖拽中')"
+    >
+      <div class="content">可拖拽和调整大小的元素</div>
+    </VueDragResize>
+  </div>
+</template>
+<script setup>
+// 注意，这里是从vue-drag-resize下面的src目录导出的组件
+import VueDragResize from 'vue-drag-resize/src'
+
+const resizeHandle = (size) => {
+  console.log('调整了元素大小')
+  console.log(size)
+}
+</script>
+```
+
+
+
+## 场景示例
+
+用户选择图片，并自由的对图片进行裁剪。
+
+### 选择图片并进行预览
+
+```vue
+<template>
+  <div class="crop">
+    <h1>照片编辑器</h1>
+    <div class="controls">
+      <input type="file" accept="image/*" @change="onChange"/>
+      <button>裁剪</button>
+    </div>
+    <div class="editor-container" v-if="imageUrl">
+      <div class="image-container">
+        <img :src="imageUrl" class="photo" alt="用户选择的图片">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const imageUrl = ref(null)
+const onChange = (event) => {
+  const file = event.target.files[0]
+  const reader = new FileReader()
+  // 读取文件，读取完成后会触发 onload 事件
+  reader.readAsDataURL(file)
+  reader.onload = async (e) => {
+    imageUrl.value = e.target.result
+  }
+}
+</script>
+```
+
+### 展示裁剪区域更新裁剪区域信息
+
+```vue
+<template>
+  <div class="crop">
+    <h1>照片编辑器</h1>
+    <div class="controls">
+      <input type="file" accept="image/*" @change="onChange"/>
+      <button :disabled="!imageUrl">裁剪</button>
+    </div>
+    <div class="editor-container" v-if="imageUrl">
+      <div class="image-container">
+        <img :src="imageUrl" class="photo" alt="用户选择的图片">
+        <!-- 裁剪区域 -->
+        <vue-drag-resize
+          v-model="cropArea"
+          :key="imageUrl"
+          class="crop-area"
+          :resizable="true"
+          :draggable="true"
+          :min-width="50"
+          :min-height="50"
+          :parent="true"
+          :parent-limitation="true"
+          @resizing="onResizing"
+          @dragging="onDragging"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import VueDragResize from 'vue-drag-resize/src'
+
+// 裁剪区域初始坐标尺寸
+const cropArea = ref({
+  x: 100,
+  y: 100,
+  w: 100,
+  h: 100
+})
+const imageUrl = ref(null)
+
+
+const onResizing = ({left, top, width, height}) => {
+  cropArea.value = { x: left, y: top, w: width, h: height}
+  console.log('111', cropArea.value)
+}
+
+const onDragging = ({left, top}) => {
+  cropArea.value = {...cropArea.value, x: left, y: top}
+}
+</script>
+```
+
+- parent： 将裁剪区域限制在父元素内
+- parent-limitation: 加入父元素边界判断，移动的时候限制在父元素内
+
+### 图片裁剪
+
+使用canvas将裁剪区域的图片绘制出来
+
+```vue
+<template>
+  <div class="crop">
+    <h1>照片编辑器</h1>
+    <div class="controls">
+      <input type="file" accept="image/*" @change="onChange"/>
+      <button :disabled="!imageUrl" @click="handleCrop">裁剪</button>
+    </div>
+    <div class="editor-container" v-if="imageUrl">
+      <div class="image-container">
+        <img :src="imageUrl" class="photo" alt="用户选择的图片">
+        <!-- 裁剪区域 -->
+        <vue-drag-resize
+          v-model="cropArea"
+          :key="imageUrl"
+          class="crop-area"
+          :resizable="true"
+          :draggable="true"
+          :min-width="50"
+          :min-height="50"
+          :parent="true"
+          :parent-limitation="true"
+          @resizing="onResizing"
+          @dragging="onDragging"
+        />
+      </div>
+    </div>
+    <div class="preview" v-if="croppedImageUrl">
+      <h2>裁剪后的图片</h2>
+      <!-- 显示裁剪后的图像 -->
+      <img :src="croppedImageUrl" alt="裁剪后的图像" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { nextTick, ref } from 'vue'
+import VueDragResize from 'vue-drag-resize/src'
+
+// 裁剪区域初始坐标尺寸
+const cropArea = ref({
+  x: 100,
+  y: 100,
+  w: 100,
+  h: 100
+})
+const imageUrl = ref(null)
+
+const photoRef = ref(null)
+const onChange = (event) => {
+  const file = event.target.files[0]
+  const reader = new FileReader()
+  // 读取文件，读取完成后会触发 onload 事件
+  reader.readAsDataURL(file)
+  reader.onload = async (e) => {
+    imageUrl.value = e.target.result
+    await nextTick()
+    photoRef.value = document.querySelector('.photo')
+  }
+}
+
+const onResizing = ({left, top, width, height}) => {
+  cropArea.value = { x: left, y: top, w: width, h: height}
+}
+
+const onDragging = ({left, top}) => {
+  cropArea.value = {...cropArea.value, x: left, y: top}
+}
+
+const croppedImageUrl = ref(null) // 存储裁剪后的图像的 URL
+const handleCrop = () => {
+  const photo = photoRef.value
+  if (!photo) return
+  // 创建一个新的 image 对象，用于存储裁剪后的图像
+  const image = new Image()
+  image.src = imageUrl.value // 设置图像的 URL
+  // 该事件会在图像加载完成后触发
+  image.onload = () => {
+    // 主要需要做的工作，是将裁剪后的图像绘制到 canvas 上
+    const canvas = document.createElement('canvas') // 创建一个 canvas 元素
+    const ctx = canvas.getContext('2d') // 获取 canvas 的 2d 上下文对象
+    // 从裁剪区域获取信息：坐标和尺寸
+    const { x, y, w, h } = cropArea.value
+    // 获取原始图像的尺寸
+    const imageWidth = image.width
+    const imageHeight = image.height
+    // 获取显示图像的容器元素
+    const containerWidth = photo.clientWidth
+    const containerHeight = photo.clientHeight
+    // 接下来来计算两个宽高比
+    // 图像的宽高比
+    const imageAspectRatio = imageWidth / imageHeight
+    // 容器元素的宽高比
+    const containerAspectRatio = containerWidth / containerHeight
+    // 计算图像在容器中显示的宽高
+    let displayWidth, displayHeight
+    if (imageAspectRatio > containerAspectRatio) {
+      // 图像更宽
+      displayWidth = containerWidth
+      displayHeight = containerWidth / imageAspectRatio
+    } else {
+      // 图像更高
+      displayHeight = containerHeight
+      displayWidth = containerHeight * imageAspectRatio
+    }
+
+    // 接下来需要计算图像在容器中的一个偏移量
+    const offsetX = (containerWidth - displayWidth) / 2
+    const offsetY = (containerHeight - displayHeight) / 2
+
+    // 接下来还需要计算水平和垂直缩放比例
+    const scaleX = imageWidth / displayWidth
+    const scaleY = imageHeight / displayHeight
+
+    // 为什么需要这些数据呢？因为一会儿绘制canvas的时候，需要使用这些数据
+
+    // 设置 canvas 画布的宽高
+    canvas.width = w * scaleX
+    canvas.height = h * scaleY
+
+    // 数据准备完毕后，接下来调用 canvas 方法来进行绘制
+    ctx.drawImage(
+      image, // 绘制的图像
+      (x - offsetX) * scaleX, // 裁剪区域的 x 坐标
+      (y - offsetY) * scaleY, // 裁剪区域的 y 坐标
+      w * scaleX, // 裁剪区域的宽度
+      h * scaleY, // 裁剪区域的高度
+      0, // 绘制到 canvas 的 x 坐标
+      0, // 绘制到 canvas 的 y 坐标
+      w * scaleX, // 绘制到 canvas 的宽度
+      h * scaleY // 绘制到 canvas 的高度
+    )
+    croppedImageUrl.value = canvas.toDataURL('image/png') // 将 canvas 转换为 base64 编码的 URL
+    console.log('croppedImageUrl', croppedImageUrl.value)
+  }
+}
+</script>
+```
+
+# 八、vue-chartjs
+
+
+
+vue-chartjs 是一个用于在 Vue 项目中创建图表的库，它基于 Chart.js 构建。Chart.js 是一个简单而灵活的 JS 图表库，提供了多种类型的图表。vue-chartjs 提供了与 Vue 的无缝集成，让在 Vue 应用中创建和管理图表变得更加方便。
+
+vue-chartjs 的特性：
+
+1. 与 Chart.js 集成
+2. 响应式图表
+3. 可定制性
+4. 组件化
+
+## 快速上手
+
+首先安装这个库：
+
+```bash
+npm i vue-chartjs chart.js
+```
+
+基础示例核心代码：
+
+```vue
+<template>
+  <Bar :data="data" :options="options" />
+</template>
+<script setup>
+import { ref } from 'vue'
+// 接下来需要从 chart.js 里面引入一些组件
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale
+} from 'chart.js'
+import { Bar } from 'vue-chartjs'
+
+// 首先需要注册从 chart.js 引入的组件
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+
+const data = ref({
+  // 图表的X轴
+  labels: [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ],
+  datasets: [
+    {
+      label: '月份销售数据',
+      backgroundColor: '#f87979', // 数据集的背景颜色
+      data: [40, 20, 12, 39, 10, 40, 39, 80, 40, 20, 12, 11] // 数据集的数据(Y轴)
+    }
+  ]
+})
+
+const options = ref({
+  responsive: true // 响应式，图表会根据容器大小自动调整
+})
+</script>
+```
+
+核心：
+
+1. 从 chartjs 里面引入一组组件，进行注册
+2. 从 vue-chartjs 里面导入图表组件，一般需要传入的参数：data、options
+
+
+
+## 其他细节
+
+1. 有哪些图形
+
+vue-chartjs 基于 Chart.js，因此支持 Chart.js 提供的所有图表类型。以下是 Chart.js 提供的图表类型，这些图表类型在 vue-chartjs 中也可以使用：
+
+- Line Chart（折线图）
+- Bar Chart（柱状图）
+- Radar Chart（雷达图）
+- Doughnut Chart（圆环图）
+- Pie Chart（饼图）
+- Polar Area Chart（极地区域图）
+- Bubble Chart（气泡图）
+- Scatter Chart（散点图）
+
+### 2. 注册组件是什么意思
+
+注册组件代码：
+
+```javascript
+ChartJS.register(ArcElement, Title, Tooltip, Legend);
+```
+
+这是因为从 Chart.js 4.x 版本**开始采用模块化设计，以减少最终构建的文件大小，并提高性能。**每个图表被分为了多个组件，为了让这些组件在图表中生效，需要在使用之前将它们注册到 Chart.js 中。
+
+### 3. options有哪些配置项
+
+[vue-chartjs官网](https://vue-chartjs.org/)
+
+[Chart.js官网](https://www.chartjs.org/docs/latest/) 
+
+### 4. 使用插件
+
+Chart.js 配置项里面其中的一项，是配置插件：
+
+```javascript
+const config = {
+  type: 'line',
+  data: {},
+  options: {},
+  plugins: []
+}
+```
+
+vue-chartjs 自然也支持插件机制。
+
+使用插件示例：缩放插件（chartjs-plugin-zoom）用于在图表中添加缩放和平移功能。
+
+09-常见场景/vue-project/src/views/VueCartjs.vue
+
+
+
+九、

@@ -1,14 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
-import Tree from '@/views/Tree.vue'
-import DebounceRef from '@/views/DebounceRef.vue'
-import LazyLoad from '@/views/LazyLoad.vue'
-import InfinityList from '@/views/InfinityList.vue'
-import InfinityList2 from '@/views/InfinityList2.vue'
-import Vueuse from '@/views/Vueuse.vue'
-import VueDraggable from '@/views/VueDraggable.vue'
-import VueDragResize1 from '@/views/VueDragResize1.vue'
-import VueDragResize2 from '@/views/VueDragResize2.vue'
 
 
 const router = createRouter({
@@ -22,47 +13,82 @@ const router = createRouter({
     {
       path: '/tree',
       name: 'Tree',
-      component: Tree,
+      component: () => import('@/views/Tree.vue'),
+      meta: {
+        page: '树形组件封装'
+      }
     },
     {
       path: '/debounceRef',
       name: 'deBounceRef',
-      component: DebounceRef,
+      component: () => import('@/views/DebounceRef.vue'),
+      meta: {
+        page: '使用custormRef实现防抖ref'
+      }
     },
     {
       path: '/lazyLoad',
       name: 'lazyLoad',
-      component: LazyLoad
+      component: () => import('@/views/LazyLoad.vue'),
+      meta: {
+        page: '懒加载'
+      }
     },
     {
       path: '/infinityList',
       name: 'infinityList',
-      component: InfinityList
+      component: () => import('@/views/InfinityList.vue'),
+      meta: {
+        page: '虚拟列表-元素定高'
+      }
     },
     {
       path: '/infinityList2',
       name: 'infinityList2',
-      component: InfinityList2
+      component: () => import('@/views/InfinityList2.vue'),
+      meta: {
+        page: '虚拟列表-元素不定高'
+      }
     },
     {
       path: '/vueuse',
       name: 'vueuse',
-      component: Vueuse
+      component: () => import('@/views/Vueuse.vue'),
+      meta: {
+        page: 'VueUse使用示例'
+      }
     },
     {
       path: '/drag',
       name: 'drag',
-      component: VueDraggable
+      component: () => import('@/views/VueDraggable.vue'),
+      meta: {
+        page: 'VueDraggable使用示例'
+      }
     },
     {
       path: '/resize',
       name: 'resize',
-      component: VueDragResize1
+      component: () => import('@/views/VueDragResize1.vue'),
+      meta: {
+        page: 'VueDragResize使用示例1'
+      }
     },
     {
       path: '/resize2',
       name: 'resize2',
-      component: VueDragResize2
+      component: () => import('@/views/VueDragResize2.vue'),
+      meta: {
+        page: 'VueDragResize使用示例2'
+      }
+    },
+    {
+      path: '/chart',
+      name: 'vue-chartjs',
+      component: () => import('@/views/VueCartjs.vue'),
+      meta: {
+        page: 'VueChartjs使用示例'
+      }
     }
   ],
 })
